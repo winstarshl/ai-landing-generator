@@ -4,7 +4,7 @@ Describe a product or offer in a sentence, review an AI-drafted landing-page **p
 
 **Live demo:** https://ai-landing-generator-pink.vercel.app
 
-> Built as a side project for an AI Engineer role. The goal was a small but real B2C product with a multi-step AI pipeline, a clean approval step, and a polished mobile output — not a single model call.
+> A small but real B2C product: a multi-step AI pipeline with a clean approval step and a polished, mobile-first final output — not a single model call.
 
 <p align="center">
   <img src="docs/preview.png" alt="A generated, published landing page rendered on a phone" width="320" />
@@ -21,7 +21,7 @@ Describe a product or offer in a sentence, review an AI-drafted landing-page **p
 
 ## Architecture
 
-It's an **orchestrated workflow, not an autonomous agent** — a deterministic server pipeline with structured LLM calls and a human approval gate. (The task explicitly asked not to overengineer; an agent loop would add unpredictability and make the approval step awkward.)
+It's an **orchestrated workflow, not an autonomous agent** — a deterministic server pipeline with structured LLM calls and a human approval gate. (Kept deliberately simple: an agent loop would add unpredictability and make the approval step awkward.)
 
 ```
 prompt
@@ -80,7 +80,7 @@ npm run test:e2e      # Playwright: full prompt→review→edit→approve→publ
 
 ## How AI tools were used during development
 
-100% of the code was written with **Claude Code**: brainstorming the design, an explicit spec (`docs/superpowers/specs/`) and implementation plan (`docs/superpowers/plans/`), then test-driven implementation task-by-task (failing test → minimal code → commit). Claude also verified real model latency against the live API and chose model ids by querying the Anthropic models endpoint.
+100% of the code was written with **Claude Code**: brainstorming the design, then test-driven implementation task-by-task (failing test → minimal code → commit). Claude also verified real model latency against the live API and chose model ids by querying the Anthropic models endpoint.
 
 ## Intentionally simplified for the time budget
 
@@ -95,7 +95,6 @@ npm run test:e2e      # Playwright: full prompt→review→edit→approve→publ
 ```
 src/lib/         schema (Zod) · theme · visuals · prompts · anthropic wrapper · pipeline · page codec
 src/components/  section components + registry, UI primitives, and the client app (Generator)
-src/app/         input screen (/), API routes, and the published page (/p/[token])
+src/app/         input screen (/), API routes, and the published page (/p/[id])
 tests/e2e/       Playwright flow tests
-docs/superpowers/  the design spec and implementation plan this was built from
 ```
