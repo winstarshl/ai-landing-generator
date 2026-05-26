@@ -10,8 +10,6 @@ import {
 import {
   PLAN_SYSTEM,
   buildPlanPrompt,
-  CRITIQUE_SYSTEM,
-  buildCritiquePrompt,
   FINALIZE_SYSTEM,
   buildFinalizePrompt,
   SECTION_SYSTEM,
@@ -29,7 +27,7 @@ function withIds(plan: ModelPlan): LandingPlan {
   return { ...plan, sections: plan.sections.map((s) => ({ ...s, id: shortId() })) };
 }
 
-/** Step 1: generate a draft plan, then run a self-critique pass that improves it. */
+/** Step 1: generate a draft landing plan from the user's prompt. */
 export async function generatePlan(
   userPrompt: string,
   client?: AnthropicLike,
@@ -42,15 +40,7 @@ export async function generatePlan(
     client,
   });
 
-  const improved = await callTool({
-    ...PLAN_TOOL,
-    system: CRITIQUE_SYSTEM,
-    prompt: buildCritiquePrompt(withIds(draft)),
-    schema: ModelPlanSchema,
-    client,
-  });
-
-  return withIds(improved);
+  return withIds(draft);
 }
 
 /** Regenerate a single section in place, preserving its id and the rest of the plan. */

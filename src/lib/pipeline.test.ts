@@ -26,15 +26,13 @@ const modelPlan = (heroHeadline: string): ModelPlan => ({
 beforeEach(() => mockCall.mockReset());
 
 describe("generatePlan", () => {
-  it("runs draft then critique and assigns ids", async () => {
-    mockCall
-      .mockResolvedValueOnce(modelPlan("Draft headline"))
-      .mockResolvedValueOnce(modelPlan("Improved headline"));
+  it("generates a plan in a single call and assigns unique ids", async () => {
+    mockCall.mockResolvedValueOnce(modelPlan("Hero headline"));
 
     const plan = await generatePlan("a focus timer app");
 
-    expect(mockCall).toHaveBeenCalledTimes(2);
-    expect(plan.sections[0].headline).toBe("Improved headline");
+    expect(mockCall).toHaveBeenCalledTimes(1);
+    expect(plan.sections[0].headline).toBe("Hero headline");
     expect(plan.sections.every((s) => typeof s.id === "string" && s.id.length > 0)).toBe(true);
     expect(plan.sections[0].id).not.toBe(plan.sections[1].id);
   });

@@ -18,15 +18,6 @@ export function buildPlanPrompt(userPrompt: string): string {
   return `Product / offer description:\n"""\n${userPrompt.trim()}\n"""\n\nProduce the landing page plan.`;
 }
 
-export const CRITIQUE_SYSTEM = `You are a critical landing-page reviewer.
-Improve the given draft plan. Keep what already works; fix what doesn't.
-Check for: missing essential sections, vague or generic headlines, weak or absent CTAs, copy that doesn't match the audience, and theme contrast issues.
-Return the FULL improved plan via the tool, following the same rules (4-7 sections, allowed types only, one hero first, at least one cta, concrete copy, cohesive HEX theme).`;
-
-export function buildCritiquePrompt(plan: LandingPlan): string {
-  return `Draft plan to review and improve:\n${JSON.stringify(stripIds(plan), null, 2)}`;
-}
-
 export const FINALIZE_SYSTEM = `You are an editor preparing landing-page copy for publication.
 Tighten and polish the copy: sharpen headlines, ensure a consistent confident voice, fix grammar and punctuation.
 Do NOT add, remove, or reorder sections, and do NOT change any section "type". Keep the theme unless a color is clearly broken.
@@ -58,6 +49,13 @@ function stripIds(plan: LandingPlan) {
   return {
     product: plan.product,
     theme: plan.theme,
-    sections: plan.sections.map(({ id: _id, ...rest }) => rest),
+    sections: plan.sections.map((s) => ({
+      type: s.type,
+      headline: s.headline,
+      subcopy: s.subcopy,
+      bullets: s.bullets,
+      cta: s.cta,
+      visual_direction: s.visual_direction,
+    })),
   };
 }
