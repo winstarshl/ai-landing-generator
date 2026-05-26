@@ -52,6 +52,17 @@ describe("generatePlan", () => {
     const critiqueCall = mockCall.mock.calls[1][0];
     expect(critiqueCall.model).toBe("claude-haiku-4-5-20251001");
   });
+
+  it("reports planning then refining stages via onStage", async () => {
+    mockCall
+      .mockResolvedValueOnce(modelPlan("Draft"))
+      .mockResolvedValueOnce(modelPlan("Improved"));
+
+    const stages: string[] = [];
+    await generatePlan("a focus timer app", undefined, (s) => stages.push(s));
+
+    expect(stages).toEqual(["planning", "refining"]);
+  });
 });
 
 describe("regenerateSection", () => {

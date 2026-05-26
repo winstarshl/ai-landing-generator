@@ -1,5 +1,6 @@
 import type { LandingPage, RenderableSection } from "@/lib/schema";
 import { themeToCssVars } from "@/lib/theme";
+import { googleFontHref } from "@/lib/fonts";
 import { SECTION_COMPONENTS } from "./sections";
 
 /** Render one section by looking up its type in the component registry. */
@@ -20,6 +21,8 @@ export function RenderLanding({ page }: { page: LandingPage }) {
 
   return (
     <div data-testid="landing-root" style={style}>
+      {/* Load the theme's web font (hoisted to <head> by React; harmless 404 + system fallback if not on Google Fonts). */}
+      <link rel="stylesheet" href={googleFontHref(page.theme.font)} />
       {page.sections.map((section) => (
         <RenderSection key={section.id} section={section} />
       ))}

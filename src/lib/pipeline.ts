@@ -18,6 +18,7 @@ import {
   buildSectionPrompt,
 } from "./prompts";
 import { resolveVisual } from "./visuals";
+import { normalizeTheme } from "./theme";
 import { shortId } from "./id";
 
 const PLAN_TOOL = {
@@ -26,14 +27,23 @@ const PLAN_TOOL = {
 };
 
 function withIds(plan: ModelPlan): LandingPlan {
-  return { ...plan, sections: plan.sections.map((s) => ({ ...s, id: shortId() })) };
+  return {
+    ...plan,
+    theme: normalizeTheme(plan.theme),
+    sections: plan.sections.map((s) => ({ ...s, id: shortId() })),
+  };
 }
 
-/** Step 1: generate a draft plan, then a fast self-critique pass that improves it. */
+export type GenerationStage = "planning" | "refining";
+
+/** Step 1: generate a draft plan, then a fast self-critique pass that improves it.
+ *  `onStage` reports progress so the UI can show real pipeline stages. */
 export async function generatePlan(
   userPrompt: string,
   client?: AnthropicLike,
+  onStage?: (stage: GenerationStage) => void,
 ): Promise<LandingPlan> {
+  onStage?.("planning");
   const draft = await callTool({
     ...PLAN_TOOL,
     system: PLAN_SYSTEM,
@@ -43,6 +53,7 @@ export async function generatePlan(
   });
 
   // Self-critique on a fast model: review the draft and return an improved plan.
+  onStage?.("refining");
   const improved = await callTool({
     ...PLAN_TOOL,
     system: CRITIQUE_SYSTEM,
@@ -95,10 +106,11 @@ export async function finalizePlan(
     client,
   });
 
+  const theme = normalizeTheme(polished.theme);
   const sections = polished.sections.map((s, i) => {
     const section: Section = { ...s, id: plan.sections[i]?.id ?? shortId() };
-    return { ...section, visual: resolveVisual(section, polished.theme) };
+    return { ...section, visual: resolveVisual(section, theme) };
   });
 
-  return { product: polished.product, theme: polished.theme, sections };
+  return { product: polished.product, theme, sections };
 }

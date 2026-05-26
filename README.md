@@ -25,10 +25,10 @@ It's an **orchestrated workflow, not an autonomous agent** — a deterministic s
 
 ```
 prompt
- └─ POST /api/generate-plan
+ └─ POST /api/generate-plan   (streams NDJSON stages: planning → refining → done)
       1. PLAN      Claude Sonnet + tool use → strict JSON (validated by Zod)
       2. CRITIQUE  fast Haiku pass reviews & improves the draft plan
- ── user reviews / edits / regenerates ──  (approval gate)
+ ── user reviews / edits / regenerates, with a live mobile preview ──  (approval gate)
  └─ POST /api/regenerate-section   rewrites one section, preserving the rest
  └─ POST /api/finalize
       3. FINALIZE  polishes copy + attaches deterministic mock visuals
@@ -42,6 +42,8 @@ Key decisions:
 - **JSON → component registry.** The final page maps each `section.type` to a polished, mobile-first React component. The model produces *content*; the app owns *layout and quality*. The AI-derived theme is applied via CSS variables.
 - **Self-critique** (`generate → critique → improve`) is a lightweight agentic touch that demonstrably lifts copy quality, kept fast by running the review on Haiku.
 - **Stateless share links.** A finalized page is encoded into the URL, so there's no database to provision or fail on. A KV/Postgres short-id is a drop-in replacement (swap `encodePage`/`decodePage` for `save`/`get`).
+- **Streaming progress.** `generate-plan` streams real pipeline stages (NDJSON) so the loader reflects what's actually happening, not a fake spinner.
+- **Product polish & safeguards.** Per-section visual direction + live preview before approval; the theme's web font is loaded and body-text contrast is auto-fixed to WCAG AA; each published page ships a dynamic Open Graph share-card; public LLM endpoints are rate-limited per IP.
 
 ## Tech stack
 
@@ -86,7 +88,7 @@ npm run test:e2e      # Playwright: full prompt→review→edit→approve→publ
 - **Mock visuals** (themed gradients + Lucide icons derived from each section's visual direction) instead of real image generation.
 - Plan editing is structured field edits + per-section regenerate, not a full WYSIWYG editor.
 - Stateless share links instead of a database (clean swap documented above).
-- Web fonts aren't loaded; the theme's font name falls back to the system stack. Palette and mood carry the visual identity.
+- Rate limiting is in-memory per serverless instance — a pragmatic abuse guard; a KV-backed limiter would make it global.
 
 ## Project structure
 

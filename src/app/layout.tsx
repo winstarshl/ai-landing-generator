@@ -12,7 +12,12 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const baseUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
+  ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+  : "http://localhost:3000";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(baseUrl),
   title: "LandingForge — AI Landing Page Generator",
   description:
     "Describe your product, review an AI-drafted landing page plan, and publish a polished, mobile-first landing page.",

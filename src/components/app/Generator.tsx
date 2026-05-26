@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Sparkles, Wand, RefreshCw } from "lucide-react";
+import { Sparkles, Wand, RefreshCw, Check, Circle } from "lucide-react";
 import { LandingPlanSchema, type LandingPlan, type Section } from "@/lib/schema";
 import { postJSON } from "@/lib/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ThemePreview } from "./ThemePreview";
 import { SectionEditor } from "./SectionEditor";
+import { LivePreview } from "./LivePreview";
 
 const STORAGE_KEY = "landingforge:plan";
 
@@ -20,6 +21,7 @@ const EXAMPLES = [
 ];
 
 type Step = "input" | "review";
+type Stage = "planning" | "refining";
 
 export function Generator() {
   const router = useRouter();
@@ -30,6 +32,8 @@ export function Generator() {
   const [finalizing, setFinalizing] = useState(false);
   const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [stage, setStage] = useState<Stage | null>(null);
 
   // Restore an in-progress draft so a refresh doesn't lose work.
   // SSR-safe one-time hydration: server + first client paint render "input",
@@ -58,17 +62,48 @@ export function Generator() {
     }
     setError(null);
     setLoading(true);
+    setStage("planning");
     try {
-      const { plan } = await postJSON<{ plan: LandingPlan }>("/api/generate-plan", {
-        prompt: prompt.trim(),
+      const res = await fetch("/api/generate-plan", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ prompt: prompt.trim() }),
       });
-      setPlan(plan);
-      persist(plan);
+      if (!res.ok || !res.body) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error((data as { error?: string }).error || "Request failed");
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let received: LandingPlan | null = null;
+
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let nl: number;
+        while ((nl = buffer.indexOf("\n")) >= 0) {
+          const line = buffer.slice(0, nl).trim();
+          buffer = buffer.slice(nl + 1);
+          if (!line) continue;
+          const evt = JSON.parse(line) as { stage?: string; plan?: LandingPlan; error?: string };
+          if (evt.error) throw new Error(evt.error);
+          if (evt.stage === "done" && evt.plan) received = evt.plan;
+          else if (evt.stage === "planning" || evt.stage === "refining") setStage(evt.stage);
+        }
+      }
+
+      if (!received) throw new Error("No plan was returned.");
+      setPlan(received);
+      persist(received);
       setStep("review");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong.");
     } finally {
       setLoading(false);
+      setStage(null);
     }
   }
 
@@ -130,7 +165,7 @@ export function Generator() {
         </span>
         <div>
           <h1 className="text-lg font-bold leading-none">LandingForge</h1>
-          <p className="text-xs text-zinc-500">AI landing page generator</p>
+          <p className="text-xs text-zinc-500">AI landing page generator · by winstarshl</p>
         </div>
       </header>
 
@@ -174,7 +209,7 @@ export function Generator() {
             <Button className="mt-5 w-full sm:w-auto" onClick={generate} disabled={loading}>
               {loading ? (
                 <>
-                  <RefreshCw className="h-4 w-4 animate-spin" /> Drafting your plan…
+                  <RefreshCw className="h-4 w-4 animate-spin" /> Generating…
                 </>
               ) : (
                 <>
@@ -184,7 +219,7 @@ export function Generator() {
             </Button>
           </div>
 
-          {loading && <DraftSkeleton />}
+          {loading && <GenerationStages stage={stage} />}
         </section>
       )}
 
@@ -203,12 +238,28 @@ export function Generator() {
             <ThemePreview theme={plan.theme} />
           </div>
 
+          <div className="mb-5">
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => setPreviewOpen((v) => !v)}
+            >
+              {previewOpen ? "Hide live preview" : "Show live mobile preview"}
+            </Button>
+            {previewOpen && (
+              <div className="mt-4">
+                <LivePreview plan={plan} />
+              </div>
+            )}
+          </div>
+
           <div className="space-y-4">
             {plan.sections.map((section, i) => (
               <SectionEditor
                 key={section.id}
                 section={section}
                 index={i}
+                theme={plan.theme}
                 onChange={(next) => updateSection(section.id, next)}
                 onRegenerate={(instruction) => regenerate(section.id, instruction)}
                 regenerating={regeneratingId === section.id}
@@ -240,16 +291,51 @@ export function Generator() {
   );
 }
 
-function DraftSkeleton() {
+const STAGE_STEPS: { key: Stage; label: string }[] = [
+  { key: "planning", label: "Drafting structure & copy" },
+  { key: "refining", label: "Refining & polishing" },
+];
+
+function GenerationStages({ stage }: { stage: Stage | null }) {
+  const currentIdx = stage ? STAGE_STEPS.findIndex((s) => s.key === stage) : 0;
   return (
-    <div className="mt-8 space-y-4" aria-hidden>
-      {[0, 1, 2].map((i) => (
-        <div key={i} className="animate-pulse rounded-2xl border border-zinc-200 bg-white p-5">
-          <div className="h-3 w-24 rounded bg-zinc-200" />
-          <div className="mt-3 h-4 w-3/4 rounded bg-zinc-100" />
-          <div className="mt-2 h-4 w-1/2 rounded bg-zinc-100" />
-        </div>
-      ))}
+    <div className="mt-8 space-y-3" aria-label="Generation progress">
+      {STAGE_STEPS.map((s, i) => {
+        const done = i < currentIdx;
+        const active = i === currentIdx;
+        return (
+          <div
+            key={s.key}
+            className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-white p-4"
+          >
+            <span
+              className={
+                done
+                  ? "flex h-6 w-6 items-center justify-center rounded-full bg-green-500 text-white"
+                  : active
+                    ? "flex h-6 w-6 items-center justify-center rounded-full bg-indigo-600 text-white"
+                    : "flex h-6 w-6 items-center justify-center rounded-full bg-zinc-100 text-zinc-400"
+              }
+            >
+              {done ? (
+                <Check className="h-3.5 w-3.5" />
+              ) : active ? (
+                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Circle className="h-3 w-3" />
+              )}
+            </span>
+            <span
+              className={
+                done ? "text-sm text-zinc-500" : active ? "text-sm font-medium" : "text-sm text-zinc-400"
+              }
+            >
+              {s.label}
+              {active ? "…" : ""}
+            </span>
+          </div>
+        );
+      })}
     </div>
   );
 }

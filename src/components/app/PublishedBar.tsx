@@ -21,7 +21,7 @@ export function PublishedBar() {
     <div className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-zinc-900/90 text-white backdrop-blur">
       <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-3 px-5 py-2.5">
         <span className="flex items-center gap-1.5 text-xs text-zinc-300">
-          <Wand className="h-3.5 w-3.5" /> Made with LandingForge
+          <Wand className="h-3.5 w-3.5" /> Made with LandingForge · by winstarshl
         </span>
         <div className="flex items-center gap-2">
           <button

@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { RefreshCw } from "lucide-react";
-import type { Section } from "@/lib/schema";
+import type { Section, Theme } from "@/lib/schema";
+import { resolveVisual } from "@/lib/visuals";
+import { Icon } from "@/components/Icon";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -12,17 +14,20 @@ const FIELD =
 export function SectionEditor({
   section,
   index,
+  theme,
   onChange,
   onRegenerate,
   regenerating,
 }: {
   section: Section;
   index: number;
+  theme: Theme;
   onChange: (next: Section) => void;
   onRegenerate: (instruction: string) => void;
   regenerating: boolean;
 }) {
   const [instruction, setInstruction] = useState("");
+  const visual = resolveVisual(section, theme);
 
   return (
     <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
@@ -30,6 +35,27 @@ export function SectionEditor({
         <span className="rounded-md bg-indigo-50 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-indigo-600">
           {index + 1}. {section.type}
         </span>
+      </div>
+
+      {/* Visual direction + live mock-visual preview (what the final section will use). */}
+      <div className="mb-3 flex items-center gap-3">
+        <span
+          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-white shadow"
+          style={{ background: visual.gradient }}
+          data-testid={`visual-preview-${index}`}
+          aria-hidden
+        >
+          <Icon name={visual.icon} className="h-6 w-6" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <label className="mb-1 block text-xs font-medium text-zinc-500">Visual direction</label>
+          <input
+            aria-label={`Section ${index + 1} visual direction`}
+            className={FIELD}
+            value={section.visual_direction}
+            onChange={(e) => onChange({ ...section, visual_direction: e.target.value })}
+          />
+        </div>
       </div>
 
       <label className="mb-1 block text-xs font-medium text-zinc-500">Headline</label>

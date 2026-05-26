@@ -13,9 +13,13 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { token } = await params;
   const page = decodePage(token);
+  const title = page ? `${page.product.name} — Landing page` : "Landing page";
+  const description = page?.product.summary;
   return {
-    title: page ? `${page.product.name} — Landing page` : "Landing page",
-    description: page?.product.summary,
+    title,
+    description,
+    openGraph: { title, description, type: "website" },
+    twitter: { card: "summary_large_image", title, description },
   };
 }
 

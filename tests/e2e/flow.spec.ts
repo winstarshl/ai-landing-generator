@@ -26,8 +26,16 @@ const pageFixture: LandingPage = {
 
 const token = encodePage(pageFixture);
 
+/** Mock the streaming (NDJSON) generate-plan endpoint with a single done event. */
+function fulfillPlanStream(plan: typeof planFixture) {
+  return {
+    contentType: "application/x-ndjson",
+    body: JSON.stringify({ stage: "done", plan }) + "\n",
+  };
+}
+
 test("prompt → review → edit → approve → published page", async ({ page }) => {
-  await page.route("**/api/generate-plan", (r) => r.fulfill({ json: { plan: planFixture } }));
+  await page.route("**/api/generate-plan", (r) => r.fulfill(fulfillPlanStream(planFixture)));
   await page.route("**/api/finalize", (r) => r.fulfill({ json: { token } }));
 
   await page.goto("/");
@@ -51,7 +59,7 @@ test("prompt → review → edit → approve → published page", async ({ page 
 });
 
 test("regenerate a single section updates only that section", async ({ page }) => {
-  await page.route("**/api/generate-plan", (r) => r.fulfill({ json: { plan: planFixture } }));
+  await page.route("**/api/generate-plan", (r) => r.fulfill(fulfillPlanStream(planFixture)));
   const regenerated: LandingPlan = {
     ...planFixture,
     sections: planFixture.sections.map((s, i) => (i === 0 ? { ...s, headline: "Regenerated hero" } : s)),

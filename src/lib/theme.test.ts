@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { themeToCssVars, hashString } from "./theme";
+import {
+  themeToCssVars,
+  hashString,
+  contrastRatio,
+  readableForeground,
+  normalizeTheme,
+} from "./theme";
 import { resolveVisual } from "./visuals";
 import { shortId } from "./id";
 import type { Section, Theme } from "./schema";
@@ -25,6 +31,30 @@ describe("hashString", () => {
   it("is deterministic and non-negative", () => {
     expect(hashString("abc")).toBe(hashString("abc"));
     expect(hashString("abc")).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe("contrast helpers", () => {
+  it("computes a high ratio for black on white and low for similar colors", () => {
+    expect(contrastRatio("#000000", "#ffffff")).toBeCloseTo(21, 0);
+    expect(contrastRatio("#ffffff", "#fefefe")).toBeLessThan(1.2);
+  });
+
+  it("keeps a readable foreground but replaces an unreadable one", () => {
+    expect(readableForeground("#ffffff", "#111827")).toBe("#111827"); // already fine
+    const fixed = readableForeground("#0b1020", "#101522"); // dark on dark -> must flip
+    expect(contrastRatio("#0b1020", fixed)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("normalizeTheme fixes low-contrast body text", () => {
+    const bad = {
+      palette: { primary: "#4f46e5", bg: "#0b1020", fg: "#10131f", accent: "#22d3ee" },
+      font: "Inter",
+      mood: "dark",
+    };
+    const fixed = normalizeTheme(bad);
+    expect(contrastRatio(fixed.palette.bg, fixed.palette.fg)).toBeGreaterThanOrEqual(4.5);
+    expect(fixed.palette.primary).toBe("#4f46e5"); // untouched
   });
 });
 
