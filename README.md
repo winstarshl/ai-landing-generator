@@ -1,36 +1,95 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# LandingForge — AI Landing Page Generator
 
-## Getting Started
+Describe a product or offer in a sentence, review an AI-drafted landing-page **plan** (structure, copy, and visual direction), tweak or regenerate any part, then publish a polished, mobile-first landing page at a shareable link.
 
-First, run the development server:
+**Live demo:** _<add Vercel URL after deploy>_
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+> Built as a side project for an AI Engineer role. The goal was a small but real B2C product with a multi-step AI pipeline, a clean approval step, and a polished mobile output — not a single model call.
+
+---
+
+## What it does
+
+1. **Prompt** — the user describes a product/offer.
+2. **Draft plan** — the app generates a structured plan: detected product, a cohesive theme (palette/font/mood), and 4–7 sections (hero, benefits, features, social proof, pricing, FAQ, CTA) with concrete copy and a visual direction each.
+3. **Review & approve** — the plan is shown as human-readable cards (not JSON). The user edits any field inline, regenerates individual sections with optional instructions, then approves.
+4. **Final landing page** — the approved plan is rendered into a themed, mobile-first page available at a shareable URL.
+
+## Architecture
+
+It's an **orchestrated workflow, not an autonomous agent** — a deterministic server pipeline with structured LLM calls and a human approval gate. (The task explicitly asked not to overengineer; an agent loop would add unpredictability and make the approval step awkward.)
+
+```
+prompt
+ └─ POST /api/generate-plan
+      1. PLAN      Claude Sonnet + tool use → strict JSON (validated by Zod)
+      2. CRITIQUE  fast Haiku pass reviews & improves the draft plan
+ ── user reviews / edits / regenerates ──  (approval gate)
+ └─ POST /api/regenerate-section   rewrites one section, preserving the rest
+ └─ POST /api/finalize
+      3. FINALIZE  polishes copy + attaches deterministic mock visuals
+      → returns a stateless, gzip+base64url-encoded share token
+ GET /p/[token]   server-renders the final page from the decoded plan
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Key decisions:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **Structured outputs, never raw markup.** The model returns a typed JSON plan via Claude **tool use**; a single **Zod** schema is the source of truth (runtime validation + TS types + the tool's `input_schema`). Invalid output triggers one automatic retry with the error fed back.
+- **JSON → component registry.** The final page maps each `section.type` to a polished, mobile-first React component. The model produces *content*; the app owns *layout and quality*. The AI-derived theme is applied via CSS variables.
+- **Self-critique** (`generate → critique → improve`) is a lightweight agentic touch that demonstrably lifts copy quality, kept fast by running the review on Haiku.
+- **Stateless share links.** A finalized page is encoded into the URL, so there's no database to provision or fail on. A KV/Postgres short-id is a drop-in replacement (swap `encodePage`/`decodePage` for `save`/`get`).
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Tech stack
 
-## Learn More
+Next.js 16 (App Router) · TypeScript · Tailwind CSS v4 · `@anthropic-ai/sdk` (Claude Sonnet + Haiku, tool use) · Zod · Vitest + React Testing Library · Playwright · deployed on Vercel.
 
-To learn more about Next.js, take a look at the following resources:
+## Local development
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm install
+cp .env.example .env.local        # then set ANTHROPIC_API_KEY=...
+npm run dev                        # http://localhost:3000
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Environment variables (see `.env.example`):
 
-## Deploy on Vercel
+| Var | Required | Notes |
+| --- | --- | --- |
+| `ANTHROPIC_API_KEY` | yes | Claude API key. |
+| `ANTHROPIC_MODEL` | no | Plan/finalize model. Default `claude-sonnet-4-6`. Set to a Haiku id for ~2× faster, slightly simpler copy. |
+| `ANTHROPIC_FAST_MODEL` | no | Critique model. Default `claude-haiku-4-5-20251001`. |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Testing & CI/CD
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run typecheck     # tsc --noEmit
+npm run lint          # eslint
+npm test              # Vitest: schema, theme, pipeline, Claude wrapper, API routes, component registry
+npm run test:e2e      # Playwright: full prompt→review→edit→approve→publish flow (mobile viewport)
+```
+
+- **Unit/component/API tests mock the Anthropic SDK**, and **E2E intercepts `/api/*` at the browser level** — so the whole suite is deterministic, free, and needs no API key.
+- **CI** (GitHub Actions, `.github/workflows/ci.yml`): typecheck → lint → unit/component → production build → Playwright E2E on every push/PR.
+- **CD** (Vercel Git integration): push to `main` → production deploy; pull requests → preview deployments. `ANTHROPIC_API_KEY` lives in Vercel env, never in the repo.
+
+## How AI tools were used during development
+
+100% of the code was written with **Claude Code**: brainstorming the design, an explicit spec (`docs/superpowers/specs/`) and implementation plan (`docs/superpowers/plans/`), then test-driven implementation task-by-task (failing test → minimal code → commit). Claude also verified real model latency against the live API and chose model ids by querying the Anthropic models endpoint.
+
+## Intentionally simplified for the time budget
+
+- No auth/accounts — anyone can generate and share.
+- **Mock visuals** (themed gradients + Lucide icons derived from each section's visual direction) instead of real image generation.
+- Plan editing is structured field edits + per-section regenerate, not a full WYSIWYG editor.
+- Stateless share links instead of a database (clean swap documented above).
+- Web fonts aren't loaded; the theme's font name falls back to the system stack. Palette and mood carry the visual identity.
+
+## Project structure
+
+```
+src/lib/         schema (Zod) · theme · visuals · prompts · anthropic wrapper · pipeline · page codec
+src/components/  section components + registry, UI primitives, and the client app (Generator)
+src/app/         input screen (/), API routes, and the published page (/p/[token])
+tests/e2e/       Playwright flow tests
+docs/superpowers/  the design spec and implementation plan this was built from
+```
