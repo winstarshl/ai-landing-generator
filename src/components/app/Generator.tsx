@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Sparkles, Wand, RefreshCw, Check, Circle } from "lucide-react";
-import { LandingPlanSchema, type LandingPlan, type Section } from "@/lib/schema";
+import { LandingPlanSchema, type LandingPlan, type Section, type Theme } from "@/lib/schema";
 import { postJSON } from "@/lib/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -105,6 +105,15 @@ export function Generator() {
       setLoading(false);
       setStage(null);
     }
+  }
+
+  function updateTheme(theme: Theme) {
+    setPlan((prev) => {
+      if (!prev) return prev;
+      const updated = { ...prev, theme };
+      persist(updated);
+      return updated;
+    });
   }
 
   function updateSection(id: string, next: Section) {
@@ -235,7 +244,7 @@ export function Generator() {
           </div>
 
           <div className="mb-5">
-            <ThemePreview theme={plan.theme} />
+            <ThemePreview theme={plan.theme} onChange={updateTheme} />
           </div>
 
           <div className="mb-5">
