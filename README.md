@@ -32,8 +32,8 @@ prompt
  └─ POST /api/regenerate-section   rewrites one section, preserving the rest
  └─ POST /api/finalize
       3. FINALIZE  polishes copy + attaches deterministic mock visuals
-      → returns a stateless, gzip+base64url-encoded share token
- GET /p/[token]   server-renders the final page from the decoded plan
+      → saves the page to Vercel Blob under a short id → returns { id }
+ GET /p/[id]   server-renders the final page loaded from the store (short link)
 ```
 
 Key decisions:
@@ -41,7 +41,7 @@ Key decisions:
 - **Structured outputs, never raw markup.** The model returns a typed JSON plan via Claude **tool use**; a single **Zod** schema is the source of truth (runtime validation + TS types + the tool's `input_schema`). Invalid output triggers one automatic retry with the error fed back.
 - **JSON → component registry.** The final page maps each `section.type` to a polished, mobile-first React component. The model produces *content*; the app owns *layout and quality*. The AI-derived theme is applied via CSS variables.
 - **Self-critique** (`generate → critique → improve`) is a lightweight agentic touch that demonstrably lifts copy quality, kept fast by running the review on Haiku.
-- **Stateless share links.** A finalized page is encoded into the URL, so there's no database to provision or fail on. A KV/Postgres short-id is a drop-in replacement (swap `encodePage`/`decodePage` for `save`/`get`).
+- **Short share links via Vercel Blob.** A finalized page is stored by a short id (`/p/aB3xK9…`). The route still accepts a self-contained gzip+base64url token, so the original stateless links — and the offline E2E test — keep working unchanged.
 - **Streaming progress.** `generate-plan` streams real pipeline stages (NDJSON) so the loader reflects what's actually happening, not a fake spinner.
 - **Product polish & safeguards.** Per-section visual direction + live preview before approval; the theme's web font is loaded and body-text contrast is auto-fixed to WCAG AA; each published page ships a dynamic Open Graph share-card; public LLM endpoints are rate-limited per IP.
 
@@ -87,7 +87,7 @@ npm run test:e2e      # Playwright: full prompt→review→edit→approve→publ
 - No auth/accounts — anyone can generate and share.
 - **Mock visuals** (themed gradients + Lucide icons derived from each section's visual direction) instead of real image generation.
 - Plan editing is structured field edits + per-section regenerate, not a full WYSIWYG editor.
-- Stateless share links instead of a database (clean swap documented above).
+- Published pages are stored in Vercel Blob (simple key→JSON); no relational schema or CMS.
 - Rate limiting is in-memory per serverless instance — a pragmatic abuse guard; a KV-backed limiter would make it global.
 
 ## Project structure

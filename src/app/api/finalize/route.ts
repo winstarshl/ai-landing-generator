@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { finalizePlan } from "@/lib/pipeline";
 import { LandingPlanSchema } from "@/lib/schema";
-import { encodePage } from "@/lib/pagecodec";
+import { savePage } from "@/lib/store";
+import { shortId } from "@/lib/id";
 import { errorMessage } from "@/lib/errors";
 import { rateLimit, clientIp } from "@/lib/ratelimit";
 
@@ -29,7 +30,9 @@ export async function POST(req: Request) {
 
   try {
     const page = await finalizePlan(body.plan);
-    return NextResponse.json({ token: encodePage(page) });
+    const id = shortId(10);
+    await savePage(id, page);
+    return NextResponse.json({ id });
   } catch (e) {
     return NextResponse.json({ error: errorMessage(e) }, { status: 500 });
   }

@@ -36,7 +36,9 @@ function fulfillPlanStream(plan: typeof planFixture) {
 
 test("prompt → review → edit → approve → published page", async ({ page }) => {
   await page.route("**/api/generate-plan", (r) => r.fulfill(fulfillPlanStream(planFixture)));
-  await page.route("**/api/finalize", (r) => r.fulfill({ json: { token } }));
+  // The published route resolves a slug as a short id OR a self-contained token;
+  // returning the token keeps this E2E offline (no Blob store needed).
+  await page.route("**/api/finalize", (r) => r.fulfill({ json: { id: token } }));
 
   await page.goto("/");
   await page.getByRole("textbox").fill("a focus timer for students");

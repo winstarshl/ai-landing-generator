@@ -140,9 +140,9 @@ export function Generator() {
     setError(null);
     setFinalizing(true);
     try {
-      const { token } = await postJSON<{ token: string }>("/api/finalize", { plan });
+      const { id } = await postJSON<{ id: string }>("/api/finalize", { plan });
       persist(null);
-      router.push(`/p/${token}`);
+      router.push(`/p/${id}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not generate the final page.");
       setFinalizing(false);

@@ -1,5 +1,5 @@
 import { ImageResponse } from "next/og";
-import { decodePage } from "@/lib/pagecodec";
+import { resolvePage } from "@/lib/store";
 
 export const runtime = "nodejs";
 export const alt = "Landing page preview";
@@ -9,7 +9,7 @@ export const contentType = "image/png";
 /** Dynamic share-card image: the product name + summary on the landing's own theme gradient. */
 export default async function OgImage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
-  const page = decodePage(token);
+  const page = await resolvePage(token);
 
   const name = page?.product.name ?? "LandingForge";
   const summary = page?.product.summary ?? "Describe a product, get a polished landing page.";
