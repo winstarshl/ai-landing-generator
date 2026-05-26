@@ -2,9 +2,13 @@
 
 Describe a product or offer in a sentence, review an AI-drafted landing-page **plan** (structure, copy, and visual direction), tweak or regenerate any part, then publish a polished, mobile-first landing page at a shareable link.
 
-**Live demo:** _<add Vercel URL after deploy>_
+**Live demo:** https://ai-landing-generator-pink.vercel.app
 
 > Built as a side project for an AI Engineer role. The goal was a small but real B2C product with a multi-step AI pipeline, a clean approval step, and a polished mobile output — not a single model call.
+
+<p align="center">
+  <img src="docs/preview.png" alt="A generated, published landing page rendered on a phone" width="320" />
+</p>
 
 ---
 
@@ -70,7 +74,7 @@ npm run test:e2e      # Playwright: full prompt→review→edit→approve→publ
 
 - **Unit/component/API tests mock the Anthropic SDK**, and **E2E intercepts `/api/*` at the browser level** — so the whole suite is deterministic, free, and needs no API key.
 - **CI** (GitHub Actions, `.github/workflows/ci.yml`): typecheck → lint → unit/component → production build → Playwright E2E on every push/PR.
-- **CD** (Vercel Git integration): push to `main` → production deploy; pull requests → preview deployments. `ANTHROPIC_API_KEY` lives in Vercel env, never in the repo.
+- **CD** (Vercel): production is deployed on Vercel with `ANTHROPIC_API_KEY` stored in the project's environment (never in the repo). Connecting the GitHub repo to Vercel enables push-to-`main` production deploys and per-PR preview deployments.
 
 ## How AI tools were used during development
 
