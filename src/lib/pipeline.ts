@@ -1,4 +1,4 @@
-import { callTool, type AnthropicLike } from "./anthropic";
+import { callTool, FAST_MODEL, type AnthropicLike } from "./anthropic";
 import {
   ModelPlanSchema,
   ModelSectionSchema,
@@ -10,6 +10,8 @@ import {
 import {
   PLAN_SYSTEM,
   buildPlanPrompt,
+  CRITIQUE_SYSTEM,
+  buildCritiquePrompt,
   FINALIZE_SYSTEM,
   buildFinalizePrompt,
   SECTION_SYSTEM,
@@ -27,7 +29,7 @@ function withIds(plan: ModelPlan): LandingPlan {
   return { ...plan, sections: plan.sections.map((s) => ({ ...s, id: shortId() })) };
 }
 
-/** Step 1: generate a draft landing plan from the user's prompt. */
+/** Step 1: generate a draft plan, then a fast self-critique pass that improves it. */
 export async function generatePlan(
   userPrompt: string,
   client?: AnthropicLike,
@@ -40,7 +42,17 @@ export async function generatePlan(
     client,
   });
 
-  return withIds(draft);
+  // Self-critique on a fast model: review the draft and return an improved plan.
+  const improved = await callTool({
+    ...PLAN_TOOL,
+    system: CRITIQUE_SYSTEM,
+    prompt: buildCritiquePrompt(withIds(draft)),
+    schema: ModelPlanSchema,
+    model: FAST_MODEL,
+    client,
+  });
+
+  return withIds(improved);
 }
 
 /** Regenerate a single section in place, preserving its id and the rest of the plan. */

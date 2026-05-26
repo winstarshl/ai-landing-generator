@@ -5,7 +5,7 @@ import { LandingPlanSchema } from "@/lib/schema";
 import { errorMessage } from "@/lib/errors";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 const BodySchema = z.object({
   plan: LandingPlanSchema,

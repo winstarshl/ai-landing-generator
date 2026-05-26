@@ -2,6 +2,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 
 export const DEFAULT_MODEL = process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-6";
+/** Fast model used for the lightweight self-critique pass. */
+export const FAST_MODEL = process.env.ANTHROPIC_FAST_MODEL ?? "claude-haiku-4-5-20251001";
 
 /** Minimal surface of the Anthropic client we depend on (injectable for tests). */
 export interface AnthropicLike {

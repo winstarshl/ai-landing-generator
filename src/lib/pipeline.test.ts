@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("./anthropic", () => ({ callTool: vi.fn() }));
+vi.mock("./anthropic", () => ({
+  callTool: vi.fn(),
+  FAST_MODEL: "claude-haiku-4-5-20251001",
+}));
 
 import { callTool } from "./anthropic";
 import { generatePlan, regenerateSection, finalizePlan } from "./pipeline";
@@ -26,15 +29,28 @@ const modelPlan = (heroHeadline: string): ModelPlan => ({
 beforeEach(() => mockCall.mockReset());
 
 describe("generatePlan", () => {
-  it("generates a plan in a single call and assigns unique ids", async () => {
-    mockCall.mockResolvedValueOnce(modelPlan("Hero headline"));
+  it("runs a draft call then a self-critique call and assigns unique ids", async () => {
+    mockCall
+      .mockResolvedValueOnce(modelPlan("Draft headline"))
+      .mockResolvedValueOnce(modelPlan("Improved headline"));
 
     const plan = await generatePlan("a focus timer app");
 
-    expect(mockCall).toHaveBeenCalledTimes(1);
-    expect(plan.sections[0].headline).toBe("Hero headline");
+    expect(mockCall).toHaveBeenCalledTimes(2);
+    expect(plan.sections[0].headline).toBe("Improved headline");
     expect(plan.sections.every((s) => typeof s.id === "string" && s.id.length > 0)).toBe(true);
     expect(plan.sections[0].id).not.toBe(plan.sections[1].id);
+  });
+
+  it("runs the critique on the fast model", async () => {
+    mockCall
+      .mockResolvedValueOnce(modelPlan("Draft"))
+      .mockResolvedValueOnce(modelPlan("Improved"));
+
+    await generatePlan("a focus timer app");
+
+    const critiqueCall = mockCall.mock.calls[1][0];
+    expect(critiqueCall.model).toBe("claude-haiku-4-5-20251001");
   });
 });
 

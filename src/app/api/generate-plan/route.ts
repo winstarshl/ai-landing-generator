@@ -4,7 +4,7 @@ import { generatePlan } from "@/lib/pipeline";
 import { errorMessage } from "@/lib/errors";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 const BodySchema = z.object({ prompt: z.string().min(3).max(2000) });
 
